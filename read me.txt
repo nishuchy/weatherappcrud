@@ -1,0 +1,58 @@
+This is a flask application with PostgreSQL.
+Here run.py is the starting point of this application.
+config.py contains information about database.
+On the app folder here it contains model folder. Here is db.py database related codes contains in this page.
+ Here we use  function
+ get_db_connection() that create connection with config.py.
+
+The overall view is:
+
+app/model/db.py :
+Database related works
+app/model/routes/role_routes.py:
+Routing related tasks and post function related tasks
+add/static: for storing css and js
+app/templates/: html related files
+
+_init_.py: This page defines a Flask app factory that creates the app and registers the role_bp blueprint for routing.
+
+config.py: Database info
+
+run.py:This runs the Flask app by creating it with create_app() and starting the server in debug mode.
+
+API :
+
+Geocode API :  to get lat and lon from address
+Weather metro api: to get weather from lat and lon
+Reverse API: to get address from lat and lon
+
+HTML File shows JSON data that is return by POST function. For showing weather information from weather code here we use
+get_weather_description.
+
+Database:
+Table : tbl_user
+Collumns:
+userid
+username
+password
+fullname
+
+Table: tbl_weather
+Collumns:
+
+weatherid
+userid
+location
+date
+temp_max
+ temp_min
+description
+
+
+Here we use postgresql crud operation. History page contains userid wise history and from there
+you can do update and delete.
+
+
+
+
+

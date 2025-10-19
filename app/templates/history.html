@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Weather History</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Weather History</h2>
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Location</th>
+                <th>Date</th>
+                <th>Temp Max</th>
+                <th>Temp Min</th>
+                <th>Description</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td>{{ row[0] }}</td>
+                <td>{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+                <td>{{ row[3] }}</td>
+                <td>{{ row[4] }}</td>
+                <td>{{ row[5] }}</td>
+                <td>
+          <a href="/roleedit?id={{row[0]}}" class="btn btn-sm font-sm rounded btn-brand">
+        <i class="material-icons md-edit"></i> Edit
+    </a>
+    <a href="/roledelete?id={{row[0]}}" class="btn btn-sm font-sm btn-light rounded"   onclick="return confirm('Are you sure you want to delete this role?');">
+        <i class="material-icons md-delete_forever"></i> Delete
+    </a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+</body>
+</html>
