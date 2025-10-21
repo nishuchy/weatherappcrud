@@ -1,6 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, url_for, make_response, jsonify
+from flask import Blueprint,Response, render_template, request, redirect, url_for, make_response, jsonify
 from app.models.db import get_db_connection, insert_update_user, fetch_history, delete_weather, weather_base_info,update_weather_info
 import requests
+from io import StringIO
+import csv
+
 
 role_bp = Blueprint('role_bp', __name__)
 GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
@@ -133,7 +136,7 @@ def get_weather():
     fromdate = request.form.get("fromdate")
     todate = request.form.get("todate")
 
-    # Geocode or reverse geocode
+    # 🌍 Geocode or Reverse Geocode
     if not (lat and lon):
         geo_response = requests.get(GEOCODE_URL, params={"name": location, "count": 1})
         geo_data = geo_response.json()
@@ -164,7 +167,7 @@ def get_weather():
             city = "Your Location"
             country = ""
 
-    # Fetch weather
+    # 🌦 Fetch Weather
     params = {
         "latitude": lat,
         "longitude": lon,
@@ -189,7 +192,7 @@ def get_weather():
         "description": get_weather_description(current.get("weathercode", 0))
     }
 
-    # Forecast
+    # 📆 Forecast
     forecast_data = []
     for i in range(len(weather_data["daily"]["time"])):
         forecast_data.append({
@@ -199,30 +202,56 @@ def get_weather():
             "description": get_weather_description(weather_data["daily"]["weathercode"][i])
         })
 
-    # Insert into DB
-    user_id_cookie = request.cookies.get("user_id")
-    if not user_id_cookie:
-        return jsonify({"error": "User not logged in"}), 401
-
-    user_id = int(user_id_cookie)
-    location_name = f"{city}, {country}" if country else city
+    # 💾 Save to DB
     conn = get_db_connection()
     cur = conn.cursor()
+    location_name = f"{city}, {country}" if country else city
     for entry in forecast_data:
         cur.execute("""
-            INSERT INTO tbl_weather (location, date, temp_max, temp_min, description, userid)
-            VALUES (%s, %s, %s, %s, %s, %s)
-        """, (location_name, entry["date"], entry["temp_max"], entry["temp_min"], entry["description"], user_id))
+              INSERT INTO tbl_weather (location, date, temp_max, temp_min, description, userid)
+              VALUES (%s, %s, %s, %s, %s, %s)
+          """, (
+            location_name,
+            entry["date"],
+            entry["temp_max"],
+            entry["temp_min"],
+            entry["description"],
+            int(request.cookies.get("user_id"))
+        ))
     conn.commit()
     cur.close()
     conn.close()
 
     resp = make_response(jsonify({"current": current_info, "forecast": forecast_data}))
     resp.set_cookie("location", location_name, max_age=60*60*24*7)
-    resp.set_cookie("fromdate", fromdate or "", max_age=60*60*24*7)
-    resp.set_cookie("todate", todate or "", max_age=60*60*24*7)
     return resp
 
+@role_bp.route('/export_csv')
+def export_csv():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT weatherid, location, date, temp_max, temp_min, description FROM tbl_weather WHERE userid = %s",
+        (int(request.cookies.get("user_id")),)
+    )
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    # Create CSV in memory
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['ID', 'Location', 'Date', 'Temp Max', 'Temp Min', 'Description'])
+    writer.writerows(rows)
+    csv_data = output.getvalue()
+    output.close()
+
+    # Send response as downloadable CSV
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment;filename=weather_history.csv"}
+    )
 
 def get_weather_description(code):
     codes = {

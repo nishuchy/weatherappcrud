@@ -9,9 +9,23 @@
 
 <body class="bg-light">
 <div class="container mt-5 text-center">
-    <h1 class="mb-4">🌤 Weather App</h1>
-        <h4 class="mb-4">Hello {{ request.cookies.get('name') }}</h4>
 
+
+    <h1 class="mb-4">🌤 Weather App</h1>
+     <p class="lead">Created by: <strong>Nishu Chowdhury</strong></p>
+
+    <h4 class="mb-4">Hello {{ request.cookies.get('name') }}</h4>
+    <section class="info-section text-center">
+            <h2>About PM Accelerator</h2>
+            <p>
+                PM Accelerator is a professional community dedicated to helping Product Managers grow their skills,
+                network, and careers. Learn more about our mission and updates on our
+                <a href="https://www.linkedin.com/school/pmaccelerator/" target="_blank">LinkedIn Page</a>.
+            </p>
+        </section>
+
+
+    <!-- Weather Form -->
     <form id="weatherForm">
         <div class="row justify-content-center">
             <div class="col-md-3">
@@ -31,32 +45,33 @@
         <button type="submit" class="btn btn-primary">Get Weather</button>
         <button type="button" id="geoBtn" class="btn btn-success">Use My Location</button>
     </form>
-<a href="/history">History</a>
+
+    <a href="/history" class="d-block mt-3">History</a>
+
     <div id="weatherResult" class="mt-5"></div>
+    <div id="extraInfo" class="mt-5 text-start"></div>
 </div>
 
 <script>
-    const REVERSE_GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/reverse";
 $(document).ready(function() {
-    // 🗓 Default date range = today to +5 days
+    // Default date range: today → +5 days
     let today = new Date().toISOString().split('T')[0];
     let next5 = new Date();
     next5.setDate(new Date().getDate() + 5);
-    let futureDate = next5.toISOString().split('T')[0];
     $("#fromdate").val(today);
-    $("#todate").val(futureDate);
+    $("#todate").val(next5.toISOString().split('T')[0]);
 });
 
+// Submit form → call backend
 $("#weatherForm").submit(function(e) {
     e.preventDefault();
     const fromdate = new Date($("#fromdate").val());
     const todate = new Date($("#todate").val());
-
-
     if (todate < fromdate) {
         alert("❌ 'To Date' cannot be earlier than 'From Date'!");
         return;
     }
+
     $.post("/weather", {
         location: $("#location").val(),
         fromdate: $("#fromdate").val(),
@@ -66,10 +81,10 @@ $("#weatherForm").submit(function(e) {
     }).fail(() => alert("❌ Location not found!"));
 });
 
+// Use My Location Button
 $("#geoBtn").click(async function() {
     const fromdate = new Date($("#fromdate").val());
     const todate = new Date($("#todate").val());
-
     if (todate < fromdate) {
         alert("❌ 'To Date' cannot be earlier than 'From Date'!");
         return;
@@ -84,36 +99,27 @@ $("#geoBtn").click(async function() {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
 
-
-        // ✅ Reverse geocode first
         try {
-            const REVERSE_GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/reverse";
-            const res = await fetch(`${REVERSE_GEOCODE_URL}?latitude=${lat}&longitude=${lon}&count=1`);
+            const res = await fetch(`https://geocoding-api.open-meteo.com/v1/reverse?latitude=${lat}&longitude=${lon}&count=1`);
             const data = await res.json();
-
             let locationName = "Unknown Location";
             if (data.results && data.results.length > 0) {
                 const city = data.results[0].name;
                 const country = data.results[0].country;
                 locationName = country ? `${city}, ${country}` : city;
             }
-alert(locationName);
-            // ✅ Set location input box
             $("#location").val(locationName);
-
         } catch (err) {
             console.error(err);
             $("#location").val("Error fetching location");
         }
 
-        // ✅ Fetch weather after setting location
         $.post("/weather", {
             lat: lat,
             lon: lon,
             fromdate: $("#fromdate").val(),
             todate: $("#todate").val()
         }, function(data) {
-            // Update location again from backend if needed
             $("#location").val(`${data.current.city}, ${data.current.country}`);
             displayWeather(data);
         }).fail(() => alert("❌ Weather data not found!"));
@@ -122,9 +128,9 @@ alert(locationName);
         console.error(err);
     });
 });
-// 🌤 Map weather descriptions to icons
+
 function getWeatherIcon(description) {
-    description = description.toLowerCase();
+    description = (description || "").toLowerCase();
     if (description.includes("clear")) return "fa-solid fa-sun text-warning";
     if (description.includes("cloud")) return "fa-solid fa-cloud text-secondary";
     if (description.includes("rain")) return "fa-solid fa-cloud-rain text-primary";
@@ -136,12 +142,17 @@ function getWeatherIcon(description) {
     return "fa-solid fa-cloud text-secondary";
 }
 
+// Display Weather
 function displayWeather(data) {
-    let iconClass = getWeatherIcon(data.current.description);
+    if (!data || !data.current) {
+        $("#weatherResult").html('<div class="alert alert-warning">No weather data returned.</div>');
+        return;
+    }
 
+    let iconClass = getWeatherIcon(data.current.description);
     let html = `
         <div class="card shadow-lg mx-auto p-4 mb-4" style="max-width: 500px;">
-            <h2>${data.current.city}, ${data.current.country}</h2>
+            <h2>${data.current.city || ""}${data.current.country ? ", " + data.current.country : ""}</h2>
             <i class="${iconClass}" style="font-size: 60px;"></i>
             <h3 class="mt-3"><strong>${data.current.temp}°C</strong></h3>
             <p class="text-capitalize">${data.current.description}</p>
@@ -152,7 +163,7 @@ function displayWeather(data) {
         <div class="row justify-content-center">
     `;
 
-    data.forecast.forEach(f => {
+    (data.forecast || []).forEach(f => {
         let forecastIcon = getWeatherIcon(f.description);
         html += `
             <div class="col-md-2 col-sm-4 card m-2 p-3 shadow-sm border-0" style="border-radius: 12px;">
@@ -165,6 +176,51 @@ function displayWeather(data) {
 
     html += `</div>`;
     $("#weatherResult").html(html);
+
+    // Only show Wikipedia information now (no map / iframes)
+    const locationName = $("#location").val() || (data.current.city || "");
+    displayWikipediaOnly(locationName);
+}
+
+// Wikipedia-only extra info
+function displayWikipediaOnly(location) {
+    const safeQuery = encodeURIComponent(location || ""); // fallback if empty
+    let wikiContainer = `
+        <h3 class="mt-4 text-primary">📖 About ${location || "the location"}</h3>
+        <div id="wikiBox" class="card p-3 mb-4">
+            <p id="wikiSummary">Loading Wikipedia summary...</p>
+            <p id="wikiReadMore" class="mt-2"></p>
+        </div>
+    `;
+    $("#extraInfo").html(wikiContainer);
+
+    if (!location) {
+        $("#wikiSummary").text("No location provided to search on Wikipedia.");
+        return;
+    }
+
+    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${safeQuery}`)
+        .then(res => {
+            if (!res.ok) throw new Error("No wiki page");
+            return res.json();
+        })
+        .then(data => {
+            if (data.extract) {
+                $("#wikiSummary").text(data.extract);
+                if (data.content_urls && data.content_urls.desktop && data.content_urls.desktop.page) {
+                    $("#wikiReadMore").html(`<a href="${data.content_urls.desktop.page}" target="_blank">Read more on Wikipedia</a>`);
+                } else if (data.wikipedia) {
+                    $("#wikiReadMore").html(`<a href="https://en.wikipedia.org/wiki/${safeQuery}" target="_blank">Read more on Wikipedia</a>`);
+                }
+            } else {
+                $("#wikiSummary").text("No Wikipedia summary found for this location.");
+            }
+        })
+        .catch(err => {
+            console.warn("Wikipedia fetch error:", err);
+            $("#wikiSummary").text("No Wikipedia information available for this location.");
+            $("#wikiReadMore").text("");
+        });
 }
 </script>
 </body>

@@ -50,9 +50,12 @@ description
 
 
 Here we use postgresql crud operation. History page contains userid wise history and from there
-you can do update and delete.
+you can do update and delete. On history.html here we use csv export. and in dashboard.html  wikipedia api is used to fetch data
+based on location.
 
-
+GitHub Link :https://github.com/nishuchy/weatherappcrud
+To run this app
+from terminal python run.py
 
 
 
